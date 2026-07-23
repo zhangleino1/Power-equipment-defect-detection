@@ -1,0 +1,6 @@
+{
+  "name": "配电缺陷智能识别",
+  "description": "基于TensorFlow Lite与YOLO边缘部署的无人机配电缺陷实时识别、视觉告警与局域网Web远程复核系统",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
