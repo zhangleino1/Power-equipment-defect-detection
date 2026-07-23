@@ -176,79 +176,103 @@ class InspectionWebServer(
                 <title>配电缺陷智能识别 - 远程指挥与二次复核控制台</title>
                 <style>
                     :root {
-                        --bg-dark: #0f172a;
-                        --card-bg: #1e293b;
-                        --accent-blue: #0284c7;
-                        --accent-cyan: #38bdf8;
-                        --danger-red: #ef4444;
-                        --warning-orange: #f97316;
-                        --text-light: #f8fafc;
-                        --text-muted: #94a3b8;
-                        --border-color: #334155;
+                        --page-bg: #f4f7fb;
+                        --card-bg: #ffffff;
+                        --accent-blue: #1859d1;
+                        --accent-cyan: #0876d9;
+                        --danger-red: #dc3545;
+                        --warning-orange: #e66a16;
+                        --text-main: #172033;
+                        --text-muted: #667085;
+                        --border-color: #dbe3ee;
+                        --soft-blue: #eef5ff;
+                        --success: #12805c;
                     }
                     * { box-sizing: border-box; margin: 0; padding: 0; }
                     body {
-                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-                        background-color: var(--bg-dark);
-                        color: var(--text-light);
+                        font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", sans-serif;
+                        background:
+                            radial-gradient(circle at 8% 0%, rgba(24,89,209,0.10), transparent 30rem),
+                            linear-gradient(180deg, #f8fbff 0%, var(--page-bg) 45%);
+                        color: var(--text-main);
                         display: flex;
                         flex-direction: column;
                         min-height: 100vh;
                     }
                     header {
-                        background-color: #0b1120;
-                        padding: 1rem 2rem;
+                        background: rgba(255,255,255,0.94);
+                        padding: 1rem 2.25rem;
                         border-bottom: 1px solid var(--border-color);
                         display: flex;
                         justify-content: space-between;
                         align-items: center;
+                        position: sticky;
+                        top: 0;
+                        z-index: 20;
+                        backdrop-filter: blur(14px);
+                        box-shadow: 0 8px 28px rgba(31,55,92,0.07);
                     }
                     .logo-area { display: flex; align-items: center; gap: 0.75rem; }
-                    .logo-icon { width: 32px; height: 32px; background: var(--accent-blue); border-radius: 6px; display: grid; place-items: center; font-weight: bold; }
-                    h1 { font-size: 1.25rem; font-weight: 600; color: #ffffff; }
+                    .logo-icon {
+                        width: 40px; height: 40px;
+                        background: linear-gradient(145deg, #0f4bb5, #2a78ed);
+                        color: white; border-radius: 11px;
+                        display: grid; place-items: center; font-weight: bold;
+                        box-shadow: 0 8px 20px rgba(24,89,209,0.25);
+                    }
+                    h1 { font-size: 1.2rem; font-weight: 700; color: var(--text-main); letter-spacing: 0.01em; }
                     .status-pill {
                         display: inline-flex; align-items: center; gap: 0.5rem;
-                        background: rgba(16, 185, 129, 0.15); color: #10b981;
-                        padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.875rem; font-weight: 500;
+                        background: #eaf8f2; color: var(--success);
+                        border: 1px solid #bce9d7;
+                        padding: 0.4rem 0.8rem; border-radius: 999px; font-size: 0.82rem; font-weight: 650;
                     }
-                    .dot { width: 8px; height: 8px; background: #10b981; border-radius: 50%; }
+                    .dot { width: 8px; height: 8px; background: #17a673; border-radius: 50%; box-shadow: 0 0 0 4px rgba(23,166,115,0.12); }
                     
                     .main-container {
                         display: grid;
-                        grid-template-columns: 2fr 1fr;
+                        grid-template-columns: minmax(0, 2.35fr) minmax(320px, 0.9fr);
                         gap: 1.5rem;
-                        padding: 1.5rem 2rem;
+                        width: min(1680px, 100%);
+                        margin: 0 auto;
+                        padding: 1.5rem 2rem 2rem;
                         flex: 1;
                     }
                     @media (max-width: 1024px) {
                         .main-container { grid-template-columns: 1fr; }
+                        header { padding: 0.9rem 1rem; }
+                        .main-container { padding: 1rem; }
+                        .status-pill span { display: none; }
                     }
                     .panel {
                         background: var(--card-bg);
                         border: 1px solid var(--border-color);
-                        border-radius: 12px;
+                        border-radius: 16px;
                         padding: 1.25rem;
                         display: flex;
                         flex-direction: column;
                         gap: 1rem;
+                        box-shadow: 0 14px 34px rgba(31,55,92,0.08);
                     }
                     .panel-title {
-                        font-size: 1.1rem;
-                        font-weight: 600;
-                        color: var(--accent-cyan);
+                        font-size: 1.05rem;
+                        font-weight: 700;
+                        color: var(--text-main);
                         display: flex;
                         justify-content: space-between;
                         align-items: center;
                     }
                     .video-container {
                         position: relative;
-                        background: #000;
-                        border-radius: 8px;
+                        background: #0f172a;
+                        border-radius: 13px;
                         overflow: hidden;
                         aspect-ratio: 16/9;
                         display: flex;
                         justify-content: center;
                         align-items: center;
+                        border: 1px solid #26344e;
+                        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04), 0 12px 28px rgba(15,23,42,0.18);
                     }
                     #videoFeed {
                         width: 100%;
@@ -263,7 +287,8 @@ class InspectionWebServer(
                         pointer-events: none;
                     }
                     .hud-badge {
-                        background: rgba(15, 23, 42, 0.75);
+                        background: rgba(11, 22, 41, 0.78);
+                        color: #f8fafc;
                         backdrop-filter: blur(8px);
                         padding: 0.35rem 0.75rem;
                         border-radius: 6px;
@@ -272,35 +297,37 @@ class InspectionWebServer(
                     }
                     .telemetry-grid {
                         display: grid;
-                        grid-template-columns: repeat(4, 1fr);
+                        grid-template-columns: repeat(2, 1fr);
                         gap: 0.75rem;
                     }
                     .stat-box {
-                        background: #0f172a;
-                        padding: 0.75rem;
-                        border-radius: 8px;
+                        background: linear-gradient(145deg, #f9fbfe, var(--soft-blue));
+                        padding: 0.9rem 1rem;
+                        border-radius: 11px;
                         border: 1px solid var(--border-color);
                     }
                     .stat-label { font-size: 0.75rem; color: var(--text-muted); }
-                    .stat-val { font-size: 1.1rem; font-weight: 700; color: #fff; margin-top: 4px; }
+                    .stat-val { font-size: 1.1rem; font-weight: 750; color: var(--text-main); margin-top: 4px; }
                     
                     /* Defect Table */
                     .defect-list {
                         display: flex;
                         flex-direction: column;
                         gap: 0.75rem;
-                        max-height: 520px;
+                        max-height: calc(100vh - 190px);
                         overflow-y: auto;
+                        padding-right: 3px;
                     }
                     .defect-card {
-                        background: #0f172a;
+                        background: #fbfdff;
                         border: 1px solid var(--border-color);
                         border-left: 4px solid var(--accent-blue);
-                        border-radius: 8px;
-                        padding: 0.85rem;
+                        border-radius: 11px;
+                        padding: 0.95rem;
                         display: flex;
                         flex-direction: column;
                         gap: 0.5rem;
+                        box-shadow: 0 5px 16px rgba(31,55,92,0.05);
                     }
                     .defect-card.紧急缺陷 { border-left-color: var(--danger-red); }
                     .defect-card.重大缺陷 { border-left-color: var(--warning-orange); }
@@ -316,18 +343,22 @@ class InspectionWebServer(
                     
                     .action-btns { display: flex; gap: 0.5rem; margin-top: 4px; }
                     .btn {
-                        padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.8rem; font-weight: 500;
-                        border: none; cursor: pointer; transition: all 0.2s;
+                        padding: 0.5rem 0.8rem; border-radius: 8px; font-size: 0.8rem; font-weight: 650;
+                        border: none; cursor: pointer; transition: transform 0.18s, box-shadow 0.18s, background 0.18s;
                     }
+                    .btn:hover { transform: translateY(-1px); box-shadow: 0 7px 16px rgba(31,55,92,0.16); }
                     .btn-confirm { background: #10b981; color: white; }
                     .btn-confirm:hover { background: #059669; }
                     .btn-reject { background: #64748b; color: white; }
                     .btn-reject:hover { background: #475569; }
-                    .btn-alarm { background: var(--danger-red); color: white; width: 100%; padding: 0.75rem; font-size: 0.95rem; margin-top: 0.5rem; }
+                    .btn-alarm { background: var(--danger-red); color: white; width: 100%; padding: 0.8rem; font-size: 0.92rem; margin-top: 0.5rem; }
                     .btn-alarm:hover { background: #dc2626; }
 
                     /* Review modal style */
-                    .review-note { background: #1e293b; border: 1px solid var(--border-color); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; width: 100%; }
+                    .review-note { background: white; border: 1px solid var(--border-color); color: var(--text-main); padding: 8px 10px; border-radius: 7px; font-size: 0.8rem; width: 100%; outline: none; }
+                    .review-note:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(24,89,209,0.10); }
+                    .defect-list::-webkit-scrollbar { width: 7px; }
+                    .defect-list::-webkit-scrollbar-thumb { background: #c5d1e0; border-radius: 999px; }
                 </style>
             </head>
             <body>
@@ -351,7 +382,7 @@ class InspectionWebServer(
                         <div class="panel">
                             <div class="panel-title">
                                 <span>高清巡检实时监控流</span>
-                                <span style="font-size:0.8rem; color:var(--text-muted)">YOLOv8 Edge Realtime Analytics</span>
+                                <span style="font-size:0.8rem; color:var(--text-muted)">TensorFlow Lite · Edge Analytics</span>
                             </div>
                             <div class="video-container">
                                 <img id="videoFeed" src="/api/stream" alt="巡检实时流" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'640\' height=\'360\'><rect width=\'100%\' height=\'100%\' fill=\'%230f172a\'/><text x=\'50%\' y=\'50%\' fill=\'%2394a3b8\' text-anchor=\'middle\'>无人机实时视频流加载中...</text></svg>'">
@@ -388,7 +419,7 @@ class InspectionWebServer(
                     <div class="panel">
                         <div class="panel-title">
                             <span>实时缺陷识别与二次复核</span>
-                            <span id="defectCountBadge" style="font-size:0.8rem; background:rgba(2,132,199,0.2); color:var(--accent-cyan); padding:2px 8px; border-radius:12px;">0 条</span>
+                            <span id="defectCountBadge" style="font-size:0.8rem; background:#e9f2ff; color:var(--accent-blue); padding:3px 9px; border-radius:12px; border:1px solid #cfe0fb;">0 条</span>
                         </div>
                         
                         <div class="defect-list" id="defectListContainer">

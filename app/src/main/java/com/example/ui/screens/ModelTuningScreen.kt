@@ -13,8 +13,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Tune
@@ -42,6 +46,7 @@ import com.example.tflite.ModelArchitecture
 import com.example.ui.MainUiState
 import com.example.ui.theme.CautionYellow
 import com.example.ui.theme.ElectricBlue
+import com.example.ui.theme.EmergencyRed
 import com.example.ui.theme.EmeraldGreen
 import com.example.ui.theme.SkyCyan
 import com.example.ui.theme.Slate700
@@ -53,9 +58,16 @@ import com.example.ui.theme.TextMuted
 fun ModelTuningScreen(
     uiState: MainUiState,
     onModelSelected: (ModelArchitecture) -> Unit,
+    onImportCustomYolo: (android.net.Uri) -> Unit,
     onDelegateSelected: (HardwareDelegate) -> Unit,
     onConfidenceChanged: (Float) -> Unit
 ) {
+    val modelPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let(onImportCustomYolo)
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -130,21 +142,70 @@ fun ModelTuningScreen(
                         Icon(Icons.Default.Memory, contentDescription = null, tint = ElectricBlue)
                         Column {
                             Text(
-                                text = "TensorFlow Lite 模型选型 (PyTorch 转 TFLite)",
+                            text = "端侧目标检测模型",
                                 color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp
                             )
                             Text(
-                                text = "PyTorch 训练 -> ONNX 导出 -> TFLite FP16/INT8 终端量化",
+                                text = "内置通用模型可直接运行；电力缺陷模型可从本地导入",
                                 color = TextMuted,
                                 fontSize = 11.sp
                             )
                         }
                     }
 
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = if (uiState.modelReady) {
+                            EmeraldGreen.copy(alpha = 0.12f)
+                        } else {
+                            EmergencyRed.copy(alpha = 0.12f)
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            if (uiState.modelReady) {
+                                EmeraldGreen.copy(alpha = 0.45f)
+                            } else {
+                                EmergencyRed.copy(alpha = 0.45f)
+                            }
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (uiState.modelReady) {
+                                    Icons.Default.CheckCircle
+                                } else {
+                                    Icons.Default.Build
+                                },
+                                contentDescription = null,
+                                tint = if (uiState.modelReady) EmeraldGreen else EmergencyRed
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = if (uiState.modelReady) "模型已就绪" else "模型不可用",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp
+                                )
+                                Text(
+                                    text = uiState.modelLoadError
+                                        ?: "${uiState.selectedModel.displayName} · 可开始实时检测",
+                                    color = TextMuted,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
+
                     ModelArchitecture.entries.forEach { model ->
                         val isSelected = uiState.selectedModel == model
+                        val isImportEntry = model == ModelArchitecture.CUSTOM_YOLO
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -154,7 +215,13 @@ fun ModelTuningScreen(
                                 1.dp,
                                 if (isSelected) ElectricBlue else Slate700
                             ),
-                            onClick = { onModelSelected(model) }
+                            onClick = {
+                                if (isImportEntry) {
+                                    modelPicker.launch(arrayOf("application/octet-stream", "*/*"))
+                                } else {
+                                    onModelSelected(model)
+                                }
+                            }
                         ) {
                             Row(
                                 modifier = Modifier
@@ -163,21 +230,47 @@ fun ModelTuningScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Column {
+                                Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = model.displayName,
+                                        text = if (isImportEntry && uiState.customModelName != null) {
+                                            uiState.customModelName
+                                        } else {
+                                            model.displayName
+                                        },
                                         color = if (isSelected) SkyCyan else Color.White,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 14.sp
                                     )
                                     Text(
-                                        text = "模型大小: ${model.sizeMb} | 拟合基准时延: ~${model.baseLatencyMs}ms",
+                                        text = if (isImportEntry) {
+                                            "选择带 Metadata 的 .tflite 文件，导入后自动校验"
+                                        } else {
+                                            "COCO 通用目标识别 · 模型大小 ${model.sizeMb} · 约 ${model.baseLatencyMs}ms"
+                                        },
                                         color = TextMuted,
                                         fontSize = 11.sp
                                     )
                                 }
 
-                                if (isSelected) {
+                                if (isImportEntry && !isSelected) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.CloudUpload,
+                                            contentDescription = null,
+                                            tint = SkyCyan,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Text(
+                                            text = "导入",
+                                            color = SkyCyan,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                } else if (isSelected) {
                                     Surface(
                                         color = ElectricBlue,
                                         shape = RoundedCornerShape(12.dp)

@@ -115,6 +115,7 @@ fun MainApp(viewModel: MainViewModel = viewModel()) {
                 2 -> ModelTuningScreen(
                     uiState = uiState,
                     onModelSelected = { viewModel.updateModel(it) },
+                    onImportCustomYolo = { viewModel.importCustomYolo(it) },
                     onDelegateSelected = { viewModel.updateDelegate(it) },
                     onConfidenceChanged = { viewModel.updateConfidenceThreshold(it) }
                 )

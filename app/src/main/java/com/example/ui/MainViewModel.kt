@@ -6,9 +6,11 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.net.Uri
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.provider.OpenableColumns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.AppDatabase
@@ -28,6 +30,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
+import java.io.File
 
 data class MainUiState(
     val isDetecting: Boolean = true,
@@ -37,7 +40,10 @@ data class MainUiState(
     val alarmMessage: String = "",
     val webServerRunning: Boolean = false,
     val webServerUrl: String = "http://127.0.0.1:8080",
-    val selectedModel: ModelArchitecture = ModelArchitecture.YOLO_V8N_FP16,
+    val selectedModel: ModelArchitecture = ModelArchitecture.MOBILENET_SSD_V1,
+    val modelReady: Boolean = false,
+    val modelLoadError: String? = null,
+    val customModelName: String? = null,
     val selectedDelegate: HardwareDelegate = HardwareDelegate.GPU_DELEGATE,
     val confThreshold: Float = 0.50f,
     val fps: Int = 58,
@@ -55,7 +61,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val detectorEngine = DefectDetectorEngine(application)
     private var webServer: InspectionWebServer? = null
     
-    private val _uiState = MutableStateFlow(MainUiState())
+    private val _uiState = MutableStateFlow(
+        MainUiState(
+            selectedModel = detectorEngine.selectedModel,
+            modelReady = detectorEngine.isReady,
+            modelLoadError = detectorEngine.loadError
+        )
+    )
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
     private var frameCounter = 0L
@@ -240,8 +252,63 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun updateModel(model: ModelArchitecture) {
-        detectorEngine.selectedModel = model
-        _uiState.value = _uiState.value.copy(selectedModel = model)
+        if (!model.isSelectable) return
+
+        detectorEngine.selectBundledModel(model)
+        _uiState.value = _uiState.value.copy(
+            selectedModel = detectorEngine.selectedModel,
+            modelReady = detectorEngine.isReady,
+            modelLoadError = detectorEngine.loadError,
+            customModelName = null
+        )
+    }
+
+    fun importCustomYolo(uri: Uri) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val displayName = resolveDisplayName(uri) ?: "custom_power_yolo.tflite"
+            val modelDirectory = File(getApplication<Application>().filesDir, "models").apply {
+                mkdirs()
+            }
+            val targetFile = File(modelDirectory, "custom_power_yolo.tflite")
+
+            val result = runCatching {
+                getApplication<Application>().contentResolver.openInputStream(uri)?.use { input ->
+                    targetFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                } ?: error("无法读取所选模型文件")
+
+                require(targetFile.length() > 0L) { "模型文件为空" }
+                detectorEngine.importCustomYolo(targetFile)
+            }
+
+            val imported = result.getOrDefault(false)
+            val importError = result.exceptionOrNull()?.localizedMessage
+                ?: detectorEngine.loadError
+
+            if (!imported) {
+                detectorEngine.selectBundledModel(ModelArchitecture.MOBILENET_SSD_V1)
+            }
+
+            _uiState.value = _uiState.value.copy(
+                selectedModel = detectorEngine.selectedModel,
+                modelReady = detectorEngine.isReady,
+                modelLoadError = if (imported) null else "YOLO 导入失败：${importError ?: "模型格式不兼容"}",
+                customModelName = if (imported) displayName else null
+            )
+        }
+    }
+
+    private fun resolveDisplayName(uri: Uri): String? {
+        return getApplication<Application>().contentResolver.query(
+            uri,
+            arrayOf(OpenableColumns.DISPLAY_NAME),
+            null,
+            null,
+            null
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) cursor.getString(0) else null
+        }
     }
 
     fun updateDelegate(delegate: HardwareDelegate) {

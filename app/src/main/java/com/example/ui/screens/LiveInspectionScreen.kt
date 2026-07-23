@@ -92,8 +92,8 @@ fun LiveInspectionScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         // Top Linkage Alarm Banner
         AnimatedVisibility(
@@ -171,6 +171,7 @@ fun LiveInspectionScreen(
                 AndroidView(
                     factory = { ctx ->
                         val previewView = PreviewView(ctx).apply {
+                            scaleType = PreviewView.ScaleType.FILL_CENTER
                             layoutParams = android.view.ViewGroup.LayoutParams(
                                 android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                                 android.view.ViewGroup.LayoutParams.MATCH_PARENT
@@ -289,10 +290,38 @@ fun LiveInspectionScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.End,
+                    .padding(10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Surface(
+                    color = Slate800.copy(alpha = 0.88f),
+                    shape = RoundedCornerShape(20.dp),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        EmeraldGreen.copy(alpha = 0.55f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(7.dp)
+                                .clip(CircleShape)
+                                .background(if (uiState.modelReady) EmeraldGreen else EmergencyRed)
+                        )
+                        Text(
+                            text = "${uiState.currentDetections.size} 个目标",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+
                 // AI Edge Metrics Pill
                 Surface(
                     color = Slate800.copy(alpha = 0.85f),
@@ -340,21 +369,6 @@ fun LiveInspectionScreen(
             }
         }
 
-        // Live Defect Counter Cards
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            val detectionCount = uiState.currentDetections.size
-
-            DefectSummaryBadge(
-                modifier = Modifier.weight(1f),
-                title = "识别目标数",
-                count = detectionCount,
-                color = EmeraldGreen
-            )
-        }
-
         // Control Toolbar
         Surface(
             modifier = Modifier.fillMaxWidth(),
@@ -364,7 +378,7 @@ fun LiveInspectionScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(8.dp),
+                    .padding(horizontal = 6.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -380,7 +394,7 @@ fun LiveInspectionScreen(
                         contentDescription = null
                     )
                     Spacer(Modifier.width(6.dp))
-                    Text(if (uiState.isDetecting) "暂停边缘推理" else "启动边缘推理")
+                    Text(if (uiState.isDetecting) "暂停检测" else "开始检测")
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {

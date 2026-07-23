@@ -7,6 +7,8 @@ import android.os.SystemClock
 import org.tensorflow.lite.support.image.TensorImage
 import org.tensorflow.lite.task.vision.detector.ObjectDetector
 import org.tensorflow.lite.task.vision.detector.ObjectDetector.ObjectDetectorOptions
+import java.io.File
+import java.io.FileInputStream
 import kotlin.random.Random
 
 data class DetectedDefect(
@@ -20,10 +22,33 @@ data class DetectedDefect(
     val severityColorHex: Long = 0xFF10B981 // Green color for general detection
 }
 
-enum class ModelArchitecture(val displayName: String, val sizeMb: String, val baseLatencyMs: Long) {
-    YOLO_V8N_FP16("通用目标检测模型 (MobileNet SSD)", "4.2 MB", 30L),
-    YOLO_V8S_INT8("电力专用模型 (待训练)", "-- MB", 0L),
-    MOBILENET_V3_SSD("自定义模型 (待导入)", "-- MB", 0L)
+enum class ModelArchitecture(
+    val displayName: String,
+    val sizeMb: String,
+    val baseLatencyMs: Long,
+    val assetFileName: String?,
+    val availabilityLabel: String
+) {
+    MOBILENET_SSD_V1(
+        displayName = "SSD MobileNet V1 · COCO 通用识别",
+        sizeMb = "4.0 MB",
+        baseLatencyMs = 30L,
+        assetFileName = "mobilenet_ssd.tflite",
+        availabilityLabel = "内置可用"
+    ),
+    CUSTOM_YOLO(
+        displayName = "自训练 YOLO 电力缺陷模型",
+        sizeMb = "本地文件",
+        baseLatencyMs = 0L,
+        assetFileName = null,
+        availabilityLabel = "导入模型"
+    );
+
+    val isBundled: Boolean
+        get() = assetFileName != null
+
+    val isSelectable: Boolean
+        get() = isBundled
 }
 
 enum class HardwareDelegate(val displayName: String, val speedMultiplier: Float) {
@@ -33,7 +58,8 @@ enum class HardwareDelegate(val displayName: String, val speedMultiplier: Float)
 }
 
 class DefectDetectorEngine(private val context: Context) {
-    var selectedModel: ModelArchitecture = ModelArchitecture.YOLO_V8N_FP16
+    var selectedModel: ModelArchitecture = ModelArchitecture.MOBILENET_SSD_V1
+        private set
     var selectedDelegate: HardwareDelegate = HardwareDelegate.CPU_4THREADS
     var confidenceThreshold: Float = 0.50f
     var iouThreshold: Float = 0.45f
@@ -44,25 +70,70 @@ class DefectDetectorEngine(private val context: Context) {
     var totalProcessedFrames: Long = 0L
 
     private var objectDetector: ObjectDetector? = null
+    private var customModelFile: File? = null
+
+    var loadError: String? = null
+        private set
+
+    val isReady: Boolean
+        get() = objectDetector != null && loadError == null
 
     init {
         setupObjectDetector()
     }
 
     private fun setupObjectDetector() {
+        objectDetector?.close()
+        objectDetector = null
+        loadError = null
+
         try {
             val optionsBuilder = ObjectDetectorOptions.builder()
                 .setMaxResults(5)
                 .setScoreThreshold(confidenceThreshold)
             val options = optionsBuilder.build()
-            objectDetector = ObjectDetector.createFromFileAndOptions(
-                context,
-                "mobilenet_ssd.tflite",
-                options
-            )
+
+            objectDetector = when (selectedModel) {
+                ModelArchitecture.MOBILENET_SSD_V1 -> {
+                    ObjectDetector.createFromFileAndOptions(
+                        context,
+                        requireNotNull(selectedModel.assetFileName),
+                        options
+                    )
+                }
+                ModelArchitecture.CUSTOM_YOLO -> {
+                    val modelFile = requireNotNull(customModelFile) {
+                        "请先导入带 TFLite Metadata 的 YOLO 模型"
+                    }
+                    FileInputStream(modelFile).channel.use { channel ->
+                        val modelBuffer = channel.map(
+                            java.nio.channels.FileChannel.MapMode.READ_ONLY,
+                            0,
+                            channel.size()
+                        )
+                        ObjectDetector.createFromBufferAndOptions(modelBuffer, options)
+                    }
+                }
+            }
         } catch (e: Exception) {
             e.printStackTrace()
+            loadError = e.localizedMessage ?: "模型加载失败"
         }
+    }
+
+    fun selectBundledModel(model: ModelArchitecture): Boolean {
+        if (!model.isSelectable) return false
+        selectedModel = model
+        customModelFile = null
+        setupObjectDetector()
+        return isReady
+    }
+
+    fun importCustomYolo(modelFile: File): Boolean {
+        selectedModel = ModelArchitecture.CUSTOM_YOLO
+        customModelFile = modelFile
+        setupObjectDetector()
+        return isReady
     }
 
     fun processFrame(bitmap: Bitmap?, frameIndex: Long): List<DetectedDefect> {
