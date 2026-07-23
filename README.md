@@ -4,6 +4,11 @@
 
 > 当前版本内置 SSD MobileNet V1 通用目标检测模型，适合验证完整检测流程。项目已经预留自训练 YOLO TFLite 模型导入口，后续可用于电力设备缺陷识别。
 
+android 界面
+![alt text](images/2.jpg)
+pc 界面
+![alt text](images/1.png)
+
 ## 核心功能
 
 | 功能 | 说明 |
