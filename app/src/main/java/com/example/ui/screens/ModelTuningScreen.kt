@@ -148,7 +148,7 @@ fun ModelTuningScreen(
                                 fontSize = 15.sp
                             )
                             Text(
-                                text = "内置通用模型可直接运行；电力缺陷模型可从本地导入",
+                                text = "内置通用模型可运行；自定义模型必须兼容 Task Vision Metadata",
                                 color = TextMuted,
                                 fontSize = 11.sp
                             )
@@ -243,7 +243,7 @@ fun ModelTuningScreen(
                                     )
                                     Text(
                                         text = if (isImportEntry) {
-                                            "选择带 Metadata 的 .tflite 文件，导入后自动校验"
+                                            "仅兼容 Task Vision 检测模型；原始 Ultralytics LiteRT 需专用解析器"
                                         } else {
                                             "COCO 通用目标识别 · 模型大小 ${model.sizeMb} · 约 ${model.baseLatencyMs}ms"
                                         },
@@ -307,18 +307,26 @@ fun ModelTuningScreen(
                     ) {
                         Icon(Icons.Default.Memory, contentDescription = null, tint = EmeraldGreen)
                         Text(
-                            text = "边缘硬件加速 Delegate 配置",
+                            text = "边缘硬件运行器配置",
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp
                         )
                     }
 
+                    Text(
+                        text = "当前版本只接入 CPU 4 线程。GPU/NPU 入口用于课堂讲解，" +
+                            "在实现并验证真实 Delegate 前保持禁用。",
+                        color = TextMuted,
+                        fontSize = 11.sp
+                    )
+
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         HardwareDelegate.entries.forEach { delegate ->
                             val isSelected = uiState.selectedDelegate == delegate
                             FilterChip(
                                 selected = isSelected,
+                                enabled = delegate.isImplemented,
                                 onClick = { onDelegateSelected(delegate) },
                                 label = { Text(delegate.displayName) },
                                 modifier = Modifier.fillMaxWidth(),

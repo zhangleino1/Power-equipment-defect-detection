@@ -44,7 +44,8 @@ data class MainUiState(
     val modelReady: Boolean = false,
     val modelLoadError: String? = null,
     val customModelName: String? = null,
-    val selectedDelegate: HardwareDelegate = HardwareDelegate.GPU_DELEGATE,
+    // 必须与引擎真实默认值一致，不能在 UI 上显示“GPU”而底层仍运行 CPU。
+    val selectedDelegate: HardwareDelegate = HardwareDelegate.CPU_4THREADS,
     val confThreshold: Float = 0.50f,
     val fps: Int = 58,
     val latencyMs: Long = 12L,
@@ -312,13 +313,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun updateDelegate(delegate: HardwareDelegate) {
-        detectorEngine.selectedDelegate = delegate
-        _uiState.value = _uiState.value.copy(selectedDelegate = delegate)
+        val selected = detectorEngine.selectDelegate(delegate)
+        _uiState.value = _uiState.value.copy(
+            selectedDelegate = detectorEngine.selectedDelegate,
+            modelReady = detectorEngine.isReady,
+            modelLoadError = if (selected) {
+                detectorEngine.loadError
+            } else {
+                "${delegate.displayName} 尚未接入真实 Delegate，继续使用 CPU。"
+            }
+        )
     }
 
     fun updateConfidenceThreshold(conf: Float) {
-        detectorEngine.confidenceThreshold = conf
-        _uiState.value = _uiState.value.copy(confThreshold = conf)
+        val normalized = conf.coerceIn(0.10f, 0.95f)
+        // 引擎在结果层读取当前值，因此移动滑块后下一帧立即生效，无需重复加载模型。
+        detectorEngine.confidenceThreshold = normalized
+        _uiState.value = _uiState.value.copy(confThreshold = normalized)
     }
 
     fun updateRecordReview(id: Long, status: String, note: String) {
